@@ -13,6 +13,7 @@ on:
 
 jobs:
   ci:
+    name: Pytest
     runs-on: ubuntu-latest
 
     steps:
@@ -62,5 +63,5 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_IP }} << EOF
             cd /home/eshan/Metrix  # Change to your project directory
             git pull origin main   # Pull the latest code
-            supervisorctl restart metrix  # Restart Supervisor program
+            sudo supervisorctl restart metrix  # Restart Supervisor program
           EOF
