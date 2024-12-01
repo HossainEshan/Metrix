@@ -1,13 +1,12 @@
 from fastapi import APIRouter
 
-from src.api.models.response import SystemMetrics
-from src.api.repository.api_health import APIHealthRespository
+from src.api.services.api_health import APIHealthService, api_health_service_dependency
 
 router = APIRouter()
 
 
 @router.get("/api_health")
-async def api_health():
+async def api_health(service: APIHealthService = api_health_service_dependency):
 
-    response = await APIHealthRespository.get_api_health()
+    response = await service.get_api_health()
     return response
