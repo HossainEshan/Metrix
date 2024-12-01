@@ -1,11 +1,12 @@
 import time
 
 import psutil
+from fastapi import Depends
 
 
-class MetricsRepository:
-    @staticmethod
-    def get_system_metrics():
+class MetricsService:
+
+    def get_system_metrics(self):
         # CPU usage
         cpu = psutil.cpu_percent(interval=1)
         # Memory usage
@@ -49,3 +50,10 @@ class MetricsRepository:
             },
             "running_processes": running_processes,
         }
+
+
+def get_metrics_service():
+    return MetricsService()
+
+
+metrics_service_dependency = Depends(get_metrics_service)

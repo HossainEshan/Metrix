@@ -1,9 +1,10 @@
 import httpx
+from fastapi import Depends
 
 
-class APIHealthRespository:
+class APIHealthService:
 
-    async def get_api_health():
+    async def get_api_health(self):
         urls = ["http://localhost:8000/status"]
         status = {}
         async with httpx.AsyncClient() as client:
@@ -14,3 +15,10 @@ class APIHealthRespository:
                 except Exception:
                     status[url] = "Down"
         return status
+
+
+def get_api_health_service():
+    return APIHealthService()
+
+
+api_health_service_dependency = Depends(get_api_health_service)
