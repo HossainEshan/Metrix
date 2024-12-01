@@ -1,18 +1,44 @@
+import pytest
 from fastapi.testclient import TestClient
 
+from src.api.services.api_health import get_api_health_service
 from src.main import app
 
-client = TestClient(app)
+
+class MockAPIHealthService:
+
+    async def get_api_health(self):
+        return {
+            "test_endpoint_1": "Healthy",
+            "test_endpoint_2": "Error",
+            "test_endpoint_3": "Down",
+        }
 
 
-def test_api_health():
-    response = client.get("/api_health")
+@pytest.fixture
+def mock_api_health_service():
+
+    def _callable():
+        return MockAPIHealthService()
+
+    return _callable
+
+
+# Override the dependency
+@pytest.fixture
+def test_client(mock_api_health_service):
+    app.dependency_overrides[get_api_health_service] = mock_api_health_service
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides = {}  # Cleanup after tests
+
+
+def test_api_health(test_client):
+    response = test_client.get("/api_health")
     assert response.status_code == 200
 
     # Validate response is a dictionary of strings
-    health_data = response.json()
-    assert isinstance(health_data, dict)
-
-    for api, status in health_data.items():
-        assert isinstance(api, str)
-        assert status in ["Healthy", "Error", "Down"]
+    data = response.json()
+    assert data["test_endpoint_1"] == "Healthy"
+    assert data["test_endpoint_2"] == "Error"
+    assert data["test_endpoint_3"] == "Down"
