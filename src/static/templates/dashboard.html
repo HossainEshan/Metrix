@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>System Monitoring Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 20px;
+        color: #333;
+      }
+      .dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+      }
+      .card {
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        transition: transform 0.3s ease;
+      }
+      .card:hover:not(#status-bar) {
+        transform: scale(1.02);
+      }
+      #status-bar {
+        margin-bottom: 20px;
+      }
+      .status-indicator {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 10px;
+      }
+      .status-healthy {
+        background-color: #4caf50;
+      }
+      .status-warning {
+        background-color: #ffc107;
+      }
+      .status-critical {
+        background-color: #f44336;
+      }
+      .chart-container {
+        position: relative;
+        height: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status-bar" class="card">
+      <h3>System Status</h3>
+      <div id="endpoint-status">
+        <!-- Endpoint status will be dynamically updated -->
+      </div>
+    </div>
+    <div class="dashboard">
+      <div class="card">
+        <h3>CPU Usage</h3>
+        <div class="chart-container">
+          <canvas id="cpuChart"></canvas>
+        </div>
+        <p id="cpu-text">0%</p>
+      </div>
+      <div class="card">
+        <h3>Memory Usage</h3>
+        <div class="chart-container">
+          <canvas id="memoryChart"></canvas>
+        </div>
+        <p id="memory-text">0%</p>
+      </div>
+      <div class="card">
+        <h3>Disk Usage</h3>
+        <div class="chart-container">
+          <canvas id="diskChart"></canvas>
+        </div>
+        <p id="disk-text">0%</p>
+      </div>
+      <div class="card">
+        <h3>Network</h3>
+        <p>Sent: <span id="network-sent">0</span> MB</p>
+        <p>Received: <span id="network-received">0</span> MB</p>
+      </div>
+      <div class="card">
+        <h3>System Uptime</h3>
+        <p id="system-uptime">00:00:00</p>
+      </div>
+      <div class="card">
+        <h3>Load Average</h3>
+        <p>1 min: <span id="load-1min">0</span></p>
+        <p>5 min: <span id="load-5min">0</span></p>
+        <p>15 min: <span id="load-15min">0</span></p>
+      </div>
+      <div class="card">
+        <h3>Running Processes</h3>
+        <p id="running-processes">0</p>
+      </div>
+    </div>
+
+    <script>
+      // State buffers for system metrics
+      const state = {
+        cpu_usage_percent: 0,
+        memory_usage_percent: 0,
+        disk_usage_percent: 0,
+        network_sent_mbytes: 0,
+        network_received_mbytes: 0,
+        system_uptime: "00:00:00",
+        load_average: {
+          "1_min": 0,
+          "5_min": 0,
+          "15_min": 0,
+        },
+        running_processes: 0,
+        endpoint_status: "Unknown",
+      };
+
+      // WebSocket connection
+      const socket = new WebSocket("ws://localhost:8000/ws");
+
+      // Chart.js configurations
+      const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+          },
+        },
+        animation: {
+          duration: 500,
+        },
+      };
+
+      // Initialize charts
+      const cpuChart = new Chart(document.getElementById("cpuChart"), {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "CPU Usage",
+              data: [],
+              borderColor: "rgb(75, 192, 192)",
+              tension: 0.1,
+            },
+          ],
+        },
+        options: chartOptions,
+      });
+
+      const memoryChart = new Chart(document.getElementById("memoryChart"), {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Memory Usage",
+              data: [],
+              borderColor: "rgb(54, 162, 235)",
+              tension: 0.1,
+            },
+          ],
+        },
+        options: chartOptions,
+      });
+
+      const diskChart = new Chart(document.getElementById("diskChart"), {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Disk Usage",
+              data: [],
+              borderColor: "rgb(255, 99, 132)",
+              tension: 0.1,
+            },
+          ],
+        },
+        options: chartOptions,
+      });
+
+      // WebSocket message handler
+      socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+
+        // Handle system metrics
+        if (data.cpu_usage_percent !== undefined) {
+          // Update state buffer with latest metrics
+          Object.assign(state, data);
+        }
+
+        // Handle endpoint status
+        if (data["http://localhost:8000/status"]) {
+          state.endpoint_status = data["http://localhost:8000/status"];
+        }
+      };
+
+      // Periodic UI update function
+      function updateUI() {
+        // Update charts
+        updateChart(cpuChart, state.cpu_usage_percent);
+        updateChart(memoryChart, state.memory_usage_percent);
+        updateChart(diskChart, state.disk_usage_percent);
+
+        // Update text elements
+        document.getElementById(
+          "cpu-text"
+        ).textContent = `${state.cpu_usage_percent.toFixed(1)}%`;
+        document.getElementById(
+          "memory-text"
+        ).textContent = `${state.memory_usage_percent.toFixed(1)}%`;
+        document.getElementById(
+          "disk-text"
+        ).textContent = `${state.disk_usage_percent.toFixed(1)}%`;
+
+        document.getElementById("network-sent").textContent =
+          state.network_sent_mbytes.toFixed(2);
+        document.getElementById("network-received").textContent =
+          state.network_received_mbytes.toFixed(2);
+
+        document.getElementById("system-uptime").textContent =
+          state.system_uptime;
+
+        document.getElementById("load-1min").textContent =
+          state.load_average["1_min"];
+        document.getElementById("load-5min").textContent =
+          state.load_average["5_min"];
+        document.getElementById("load-15min").textContent =
+          state.load_average["15_min"];
+
+        document.getElementById("running-processes").textContent =
+          state.running_processes;
+
+        // Update endpoint status
+        const statusBar = document.getElementById("endpoint-status");
+        statusBar.innerHTML = `
+                <span class="status-indicator ${getStatusClass(
+                  state.endpoint_status
+                )}"></span>
+                ${state.endpoint_status}
+            `;
+      }
+
+      function getStatusClass(status) {
+        switch (status.toLowerCase()) {
+          case "healthy":
+            return "status-healthy";
+          case "error":
+            return "status-warning";
+          case "down":
+            return "status-critical";
+          default:
+            return "status-warning";
+        }
+      }
+
+      function updateChart(chart, value) {
+        // Add new data point
+        chart.data.labels.push(new Date().toLocaleTimeString());
+        chart.data.datasets[0].data.push(value);
+
+        // Limit to last 10 data points
+        if (chart.data.labels.length > 10) {
+          chart.data.labels.shift();
+          chart.data.datasets[0].data.shift();
+        }
+
+        chart.update("none");
+      }
+
+      // Set up periodic UI updates every 1 second
+      setInterval(updateUI, 1000);
+
+      socket.onopen = function () {
+        console.log("WebSocket connection established");
+      };
+
+      socket.onerror = function (error) {
+        console.error("WebSocket error:", error);
+      };
+
+      socket.onclose = function () {
+        console.log("WebSocket connection closed");
+      };
+    </script>
+  </body>
+</html>

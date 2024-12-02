@@ -1,23 +1,34 @@
-import httpx
+from aiohttp import ClientSession
 from fastapi import Depends
 
 
 class APIHealthService:
+    def __init__(self):
+        self.client = ClientSession()
 
     async def get_api_health(self):
         urls = ["http://localhost:8000/status"]
         status = {}
-        async with httpx.AsyncClient() as client:
-            for url in urls:
-                try:
-                    response = await client.get(url, timeout=5)
-                    status[url] = "Healthy" if response.status_code == 200 else "Error"
-                except Exception:
-                    status[url] = "Down"
+
+        for url in urls:
+            try:
+                async with self.client.get(url) as response:
+                    if response.status == 200:
+                        status[url] = "Healthy"
+                    else:
+                        status[url] = "Error"
+            except Exception as e:
+                status[url] = "Down"
+                print("API HS Exception", e)
+
         return status
 
+    async def close(self):
+        await self.client.close()
 
-def get_api_health_service():
+
+# Dependency
+async def get_api_health_service():
     return APIHealthService()
 
 
