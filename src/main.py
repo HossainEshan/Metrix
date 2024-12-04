@@ -1,12 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from httpx import AsyncClient
 
 from src.api.routers.endpoints import endpoints_router
 
 app: FastAPI = FastAPI()
-app.state.http_client = AsyncClient()
 
 
 def get_http_client():

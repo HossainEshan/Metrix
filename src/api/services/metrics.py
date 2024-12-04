@@ -1,10 +1,12 @@
 import time
 
 import psutil
-from fastapi import Depends
+
+from src.api.routers.registry import service_registry
+from src.api.services.base import BaseService
 
 
-class MetricsService:
+class MetricsService(BaseService):
 
     def get_system_metrics(self):
         # CPU usage
@@ -52,8 +54,4 @@ class MetricsService:
         }
 
 
-def get_metrics_service():
-    return MetricsService()
-
-
-metrics_service_dependency = Depends(get_metrics_service)
+service_registry.register(MetricsService)

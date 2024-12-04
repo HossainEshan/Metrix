@@ -1,35 +1,25 @@
 from aiohttp import ClientSession
-from fastapi import Depends
+
+from src.api.routers.registry import service_registry
+from src.api.services.base import BaseService
 
 
-class APIHealthService:
-    def __init__(self):
-        self.client = ClientSession()
-
+class APIHealthService(BaseService):
     async def get_api_health(self):
         urls = ["http://localhost:8000/status"]
         status = {}
-
-        for url in urls:
-            try:
-                async with self.client.get(url) as response:
-                    if response.status == 200:
-                        status[url] = "Healthy"
-                    else:
-                        status[url] = "Error"
-            except Exception as e:
-                status[url] = "Down"
-                print("API HS Exception", e)
+        async with ClientSession() as client:
+            for url in urls:
+                try:
+                    async with client.get(url) as response:
+                        if response.status == 200:
+                            status[url] = "Healthy"
+                        else:
+                            status[url] = "Error"
+                except Exception as e:
+                    status[url] = "Down"
 
         return status
 
-    async def close(self):
-        await self.client.close()
 
-
-# Dependency
-async def get_api_health_service():
-    return APIHealthService()
-
-
-api_health_service_dependency = Depends(get_api_health_service)
+service_registry.register(APIHealthService)
