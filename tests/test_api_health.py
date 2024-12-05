@@ -3,13 +3,13 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.routers.registry import service_registry
+from src.api.services.registry import service_registry
 from src.api.services.api_health import APIHealthService
 from src.main import app
 
 
 @pytest.fixture
-def api_health_service():
+def mock_api_health_service():
     service = AsyncMock(spec=APIHealthService)
     service.get_api_health.return_value = {
         "test_endpoint_1": "Healthy",
@@ -21,7 +21,7 @@ def api_health_service():
 
 
 @pytest.fixture
-def test_client(api_health_service):
+def test_client(mock_api_health_service):
     print("\nAttempting to override dependency...")
     print("Service registry key:", service_registry.get(APIHealthService))
 
@@ -30,7 +30,7 @@ def test_client(api_health_service):
     print("Current dependency:", app.dependency_overrides.get(dependency_key))
 
     # Override the dependency
-    app.dependency_overrides[dependency_key] = lambda: api_health_service
+    app.dependency_overrides[dependency_key] = lambda: mock_api_health_service
     print("Dependency override set")
     print("After override:", app.dependency_overrides)
 
@@ -40,7 +40,7 @@ def test_client(api_health_service):
 
 
 @pytest.mark.asyncio
-async def test_get_api_health_endpoint(test_client, api_health_service):
+async def test_get_api_health_endpoint(test_client, mock_api_health_service):
     # Given: Known mock response data
     expected_data = {
         "test_endpoint_1": "Healthy",
@@ -50,7 +50,8 @@ async def test_get_api_health_endpoint(test_client, api_health_service):
 
     # Print the mock's configured return value
     print(
-        "\nMock configured to return:", api_health_service.get_api_health.return_value
+        "\nMock configured to return:",
+        mock_api_health_service.get_api_health.return_value,
     )
 
     # When: Making a request to the API health endpoint
@@ -67,4 +68,4 @@ async def test_get_api_health_endpoint(test_client, api_health_service):
     assert data == expected_data
 
     # Verify the mock was called
-    api_health_service.get_api_health.assert_called_once()
+    mock_api_health_service.get_api_health.assert_called_once()

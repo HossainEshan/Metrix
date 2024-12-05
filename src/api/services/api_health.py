@@ -1,7 +1,7 @@
 from aiohttp import ClientSession
 
-from src.api.routers.registry import service_registry
 from src.api.services.base import BaseService
+from src.api.services.registry import service_registry
 
 
 class APIHealthService(BaseService):

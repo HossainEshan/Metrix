@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
 from src.api.models.response import SystemMetrics
-from src.api.routers.registry import service_registry
 from src.api.services.metrics import MetricsService
+from src.api.services.registry import service_registry
 
 router = APIRouter()
 

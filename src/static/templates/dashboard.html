@@ -128,14 +128,14 @@
       const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        animation: {
+          duration: 500,
+        },
         scales: {
           y: {
             beginAtZero: true,
-            max: 100,
+            max: 100, // Set max scale for CPU and Memory charts
           },
-        },
-        animation: {
-          duration: 500,
         },
       };
 
@@ -173,19 +173,24 @@
       });
 
       const diskChart = new Chart(document.getElementById("diskChart"), {
-        type: "line",
+        type: "pie",
         data: {
-          labels: [],
+          labels: ["Used", "Free"],
           datasets: [
             {
               label: "Disk Usage",
-              data: [],
-              borderColor: "rgb(255, 99, 132)",
-              tension: 0.1,
+              data: [0, 100], // Initial values, will be updated
+              backgroundColor: ["rgb(255, 99, 132)", "rgb(75, 192, 192)"],
             },
           ],
         },
-        options: chartOptions,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 500,
+          },
+        },
       });
 
       // WebSocket message handler
@@ -196,6 +201,14 @@
         if (data.cpu_usage_percent !== undefined) {
           // Update state buffer with latest metrics
           Object.assign(state, data);
+        }
+
+        // Update disk chart data
+        if (data.disk_usage_percent !== undefined) {
+          const used = data.disk_usage_percent;
+          const free = 100 - used; // Assuming total disk usage is 100%
+          diskChart.data.datasets[0].data = [used, free];
+          diskChart.update();
         }
 
         // Handle endpoint status
@@ -209,7 +222,6 @@
         // Update charts
         updateChart(cpuChart, state.cpu_usage_percent);
         updateChart(memoryChart, state.memory_usage_percent);
-        updateChart(diskChart, state.disk_usage_percent);
 
         // Update text elements
         document.getElementById(

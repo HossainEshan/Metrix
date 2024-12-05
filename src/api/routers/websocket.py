@@ -2,9 +2,9 @@ import asyncio
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
-from src.api.routers.registry import service_registry
 from src.api.services.api_health import APIHealthService
 from src.api.services.metrics import MetricsService
+from src.api.services.registry import service_registry
 from src.api.services.websocket import WebsocketService
 
 router = APIRouter()

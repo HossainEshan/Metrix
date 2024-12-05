@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from src.api.routers.registry import service_registry
 from src.api.services.api_health import APIHealthService
+from src.api.services.registry import service_registry
 
 router = APIRouter()
 
